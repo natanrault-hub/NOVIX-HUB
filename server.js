@@ -19,12 +19,20 @@ db.run(`CREATE TABLE IF NOT EXISTS keys (
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-const limiter = rateLimit({
+const generateLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 3,
+    message: "<script>alert('Trop de tentatives ! Veuillez patienter avant de générer une nouvelle clé.'); window.location.href='/admin';</script>",
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const globalLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 20,
+    max: 30,
     message: "Trop de requêtes, veuillez patienter."
 });
-app.use(limiter);
+app.use(globalLimiter);
 
 setInterval(() => {
     const now = Date.now();
@@ -99,7 +107,7 @@ app.get('/admin', (req, res) => {
     });
 });
 
-app.post('/generate', (req, res) => {
+app.post('/generate', generateLimiter, (req, res) => {
     const newKey = "NOVIX-" + crypto.randomBytes(4).toString('hex').toUpperCase();
     const expiresAt = Date.now() + (3 * 24 * 60 * 60 * 1000);
 
@@ -109,5 +117,5 @@ app.post('/generate', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(\`Serveur démarré sur le port \${PORT}\`);
+    console.log(`Serveur démarré sur le port ${PORT}`);
 });
